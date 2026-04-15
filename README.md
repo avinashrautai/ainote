@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # AI Notes App
 
 Phase 2 implementation for an AI Notes App built with Next.js 15, TypeScript, Tailwind CSS, Prisma, and SQLite.
@@ -80,3 +81,6 @@ npm run db:push
 npm run db:seed
 npm run dev
 ```
+=======
+# ainote
+>>>>>>> adc4eea3d74edf412269e4532699d2c6f9b97207
