@@ -1,9 +1,28 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+import { PwaProvider } from "@/components/pwa-provider";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "AI Notes App",
-  description: "Phase 1 shell for an AI-assisted notes workspace.",
+  description: "A premium AI-assisted notes workspace with notebooks, search, offline-ready shell support, and installable app behavior.",
+  applicationName: "AI Notes App",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "AI Notes App",
+  },
+  icons: {
+    icon: [
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#f4ede3",
 };
 
 export default function RootLayout({
@@ -13,7 +32,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <PwaProvider />
+        {children}
+      </body>
     </html>
   );
 }

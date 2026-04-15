@@ -1,17 +1,16 @@
-<<<<<<< HEAD
 # AI Notes App
 
-Phase 2 implementation for an AI Notes App built with Next.js 15, TypeScript, Tailwind CSS, Prisma, and SQLite.
+A premium AI Notes App built with Next.js 15, TypeScript, Tailwind CSS, Prisma, and SQLite.
 
-## Included in Phase 2
+## Included
 
 - Next.js 15 App Router project structure
 - TypeScript configuration
 - Tailwind CSS setup
-- Prisma schema for notebooks, notes, and tags
+- Prisma schema for notebooks and notes
 - SQLite datasource configuration
 - Prisma seed script with starter data
-- Real 3-panel notes workspace with CRUD, filtering, and autosave
+- Notes workspace with CRUD, filtering, autosave, import/export, and installable PWA support
 
 ## Stack
 
@@ -21,6 +20,7 @@ Phase 2 implementation for an AI Notes App built with Next.js 15, TypeScript, Ta
 - Tailwind CSS
 - Prisma ORM
 - SQLite
+- Progressive Web App support
 
 ## Getting Started
 
@@ -56,21 +56,25 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) to view the app.
 
+## PWA Usage
+
+- Build and run the app in production mode to test installability:
+
+```bash
+npm run build
+npm run start
+```
+
+- Visit the app in a Chromium-based browser and use the install prompt from the browser UI.
+- On mobile, open the production deployment in a supported browser and choose the install or add-to-home-screen option.
+- The app includes a web app manifest, install icons, and a production service worker for basic offline shell support.
+- Offline mode is intentionally lightweight: the app shell and previously visited pages can load without a network, but live database-backed changes still require connectivity.
+
 ## Database Notes
 
 - SQLite database path is configured through `DATABASE_URL` in `.env`
 - The default database file will be `prisma/dev.db`
 - Prisma schema lives in `prisma/schema.prisma`
-
-## Phase 2 Features
-
-- notebook CRUD
-- note CRUD
-- tag editing
-- search across title and content
-- notebook filtering
-- selected note editor with autosave
-- loading, error, and empty states
 
 ## Suggested Local Setup Flow
 
@@ -81,6 +85,3 @@ npm run db:push
 npm run db:seed
 npm run dev
 ```
-=======
-# ainote
->>>>>>> adc4eea3d74edf412269e4532699d2c6f9b97207

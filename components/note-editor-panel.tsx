@@ -84,6 +84,10 @@ export function NoteEditorPanel({
   }, []);
 
   function focusEditor() {
+    if (!note) {
+      return;
+    }
+
     if (!note.title.trim()) {
       titleRef.current?.focus();
       return;
@@ -104,6 +108,10 @@ export function NoteEditorPanel({
   }
 
   function handleExport(kind: "txt" | "md") {
+    if (!note) {
+      return;
+    }
+
     const safeTitle = (note.title.trim() || "untitled-note")
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
