@@ -2,7 +2,16 @@
 
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
-import { BookOpenText, ChevronLeft, ChevronRight, FileText, FolderOpen, PenSquare } from "lucide-react";
+import {
+  Archive,
+  BookCopy,
+  ChevronLeft,
+  ChevronRight,
+  FileText,
+  FolderOpen,
+  PenSquare,
+  Tags,
+} from "lucide-react";
 import type { NotebookSummary } from "@/lib/types";
 
 type SidebarPanelProps = {
@@ -26,14 +35,20 @@ type SidebarPanelProps = {
 
 const DEFAULT_COLOR = "#b85c38";
 
-function IconButton({
+function NavButton({
   title,
+  label,
+  meta,
   active = false,
+  disabled = false,
   onClick,
   children,
 }: {
   title: string;
+  label: string;
+  meta?: string;
   active?: boolean;
+  disabled?: boolean;
   onClick?: () => void;
   children: ReactNode;
 }) {
@@ -42,13 +57,23 @@ function IconButton({
       type="button"
       title={title}
       aria-label={title}
+      aria-disabled={disabled}
       onClick={onClick}
       className={[
-        "flex h-10 w-10 items-center justify-center rounded-2xl transition",
-        active ? "bg-white/80 text-foreground" : "text-muted/80 hover:bg-white/60 hover:text-foreground",
+        "flex w-full items-center gap-3 rounded-[22px] px-3 py-3 text-left transition",
+        active
+          ? "app-surface text-[var(--text)]"
+          : disabled
+            ? "cursor-default text-[color:color-mix(in_srgb,var(--text-muted)_74%,transparent)]"
+            : "text-[var(--text-muted)] hover:bg-[color:color-mix(in_srgb,var(--surface-2)_88%,transparent)] hover:text-[var(--text)]",
       ].join(" ")}
+      disabled={disabled}
     >
       {children}
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[14px] font-medium">{label}</span>
+        {meta ? <span className="block text-[12px] text-[var(--text-muted)]">{meta}</span> : null}
+      </span>
     </button>
   );
 }
@@ -93,84 +118,129 @@ export function SidebarPanel({
 
   if (isCollapsed) {
     return (
-      <aside className="flex w-[60px] flex-col items-center gap-6 px-2 py-5">
-        <IconButton title="Expand sidebar" onClick={onToggleCollapsed}>
+      <aside className="app-sidebar hidden w-[72px] flex-col items-center gap-4 rounded-[30px] px-3 py-4 md:flex">
+        <button type="button" title="Expand sidebar" onClick={onToggleCollapsed} className="app-icon-button">
           <ChevronRight size={18} strokeWidth={1.8} />
-        </IconButton>
-        <div className="h-px w-7 bg-border/70" />
-        <IconButton
+        </button>
+        <div className="h-px w-8 bg-[color:color-mix(in_srgb,var(--border)_55%,transparent)]" />
+        <button
+          type="button"
           title={`All notes (${totalNoteCount})`}
-          active={activeNotebookId === "all"}
           onClick={() => onSelectNotebook("all")}
+          className={[
+            "inline-flex h-11 w-11 items-center justify-center rounded-full transition",
+            activeNotebookId === "all"
+              ? "bg-[var(--accent)] text-white"
+              : "text-[var(--text-muted)] hover:bg-[color:color-mix(in_srgb,var(--surface-2)_88%,transparent)] hover:text-[var(--text)]",
+          ].join(" ")}
         >
           <FileText size={18} strokeWidth={1.8} />
-        </IconButton>
+        </button>
         {notebooks.slice(0, 5).map((notebook) => (
-          <IconButton
+          <button
             key={notebook.id}
+            type="button"
             title={`${notebook.name} (${notebook.noteCount})`}
-            active={activeNotebookId === notebook.id}
             onClick={() => onSelectNotebook(notebook.id)}
+            className={[
+              "inline-flex h-11 w-11 items-center justify-center rounded-full transition",
+              activeNotebookId === notebook.id
+                ? "app-surface"
+                : "hover:bg-[color:color-mix(in_srgb,var(--surface-2)_88%,transparent)]",
+            ].join(" ")}
           >
             <span
-              className="h-2.5 w-2.5 rounded-full"
+              className="h-3 w-3 rounded-full"
               style={{ backgroundColor: notebook.color ?? DEFAULT_COLOR }}
             />
-          </IconButton>
+          </button>
         ))}
       </aside>
     );
   }
 
   return (
-    <aside className="flex w-[220px] flex-col px-3 py-5">
+      <aside className="app-sidebar fixed inset-y-3 left-3 z-30 flex w-[216px] flex-col rounded-[30px] px-4 py-4 md:static md:inset-auto">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.2em] text-muted/75">
-          <BookOpenText size={18} strokeWidth={1.8} />
-          <span>Workspace</span>
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--text-muted)]">
+            Library
+          </p>
+          <h2 className="font-display mt-2 text-[1.35rem] text-[var(--text)]">Workspace</h2>
         </div>
-        <IconButton title="Collapse sidebar" onClick={onToggleCollapsed}>
+        <button type="button" title="Collapse sidebar" onClick={onToggleCollapsed} className="app-icon-button">
           <ChevronLeft size={18} strokeWidth={1.8} />
-        </IconButton>
+        </button>
       </div>
 
-      <div className="mt-7 space-y-2">
-        <button
-          type="button"
+      <div className="mt-6 space-y-1.5">
+        <NavButton
+          title={`All notes (${totalNoteCount})`}
+          label="Notes"
+          meta={`${totalNoteCount} in workspace`}
+          active={activeNotebookId === "all"}
           onClick={() => onSelectNotebook("all")}
-          className={[
-            "flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition",
-            activeNotebookId === "all" ? "bg-white/75 text-foreground" : "text-muted/85 hover:bg-white/55 hover:text-foreground",
-          ].join(" ")}
         >
           <FileText size={18} strokeWidth={1.8} />
-          <span className="min-w-0 flex-1 truncate text-[14px] font-medium">All notes</span>
-          <span className="text-[12px] text-muted/75">{totalNoteCount}</span>
-        </button>
-
-        {notebooks.map((notebook) => (
-          <button
-            key={notebook.id}
-            type="button"
-            onClick={() => onSelectNotebook(notebook.id)}
-            className={[
-              "flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition",
-              notebook.id === activeNotebookId ? "bg-white/75 text-foreground" : "text-muted/85 hover:bg-white/55 hover:text-foreground",
-            ].join(" ")}
-          >
-            <FolderOpen size={18} strokeWidth={1.8} />
-            <span className="min-w-0 flex-1 truncate text-[14px] font-medium">{notebook.name}</span>
-            <span className="text-[12px] text-muted/75">{notebook.noteCount}</span>
-          </button>
-        ))}
+        </NavButton>
+        <NavButton
+          title="Notebooks"
+          label="Notebooks"
+          meta={`${notebooks.length} collections`}
+          active={activeNotebookId !== "all"}
+        >
+          <BookCopy size={18} strokeWidth={1.8} />
+        </NavButton>
+        <NavButton title="Tags" label="Tags" meta="Organize themes" disabled>
+          <Tags size={18} strokeWidth={1.8} />
+        </NavButton>
+        <NavButton title="Archive" label="Archive" meta="Coming soon" disabled>
+          <Archive size={18} strokeWidth={1.8} />
+        </NavButton>
       </div>
 
-      <div className="mt-8">
+      <div className="mt-7">
+        <div className="mb-3 flex items-center justify-between">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--text-muted)]">
+            Notebooks
+          </p>
+          <span className="text-[12px] text-[var(--text-muted)]">{notebooks.length}</span>
+        </div>
+        <div className="max-h-[260px] space-y-1.5 overflow-y-auto pr-1">
+          {notebooks.map((notebook) => (
+            <button
+              key={notebook.id}
+              type="button"
+              onClick={() => onSelectNotebook(notebook.id)}
+              className={[
+                "flex w-full items-center gap-3 rounded-[22px] px-3 py-3 text-left transition",
+                notebook.id === activeNotebookId
+                  ? "bg-[color:color-mix(in_srgb,var(--accent-soft)_88%,transparent)] text-[var(--text)]"
+                  : "text-[var(--text-muted)] hover:bg-[color:color-mix(in_srgb,var(--surface-2)_88%,transparent)] hover:text-[var(--text)]",
+              ].join(" ")}
+            >
+              <span
+                className="h-2.5 w-2.5 shrink-0 rounded-full"
+                style={{ backgroundColor: notebook.color ?? DEFAULT_COLOR }}
+              />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[14px] font-medium">{notebook.name}</span>
+                <span className="block text-[12px] text-[var(--text-muted)]">
+                  {notebook.noteCount} {notebook.noteCount === 1 ? "note" : "notes"}
+                </span>
+              </span>
+              <FolderOpen size={16} strokeWidth={1.8} />
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-5">
         <button
           type="button"
           onClick={handleCreateNotebookAction}
           disabled={isCreatingNotebook}
-          className="inline-flex items-center gap-2 rounded-full px-3 py-2 text-[11px] font-medium uppercase tracking-[0.2em] text-muted/80 transition hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+          className="app-button app-button-soft w-full justify-center disabled:cursor-not-allowed disabled:opacity-60"
         >
           <PenSquare size={17} strokeWidth={1.8} />
           {isCreatingNotebook ? "Creating..." : "New notebook"}
@@ -179,7 +249,7 @@ export function SidebarPanel({
 
       {activeNotebook ? (
         <form
-          className="mt-8"
+          className="app-surface-soft mt-5 rounded-[26px] px-4 py-4"
           onSubmit={(event) => {
             event.preventDefault();
             void onUpdateNotebook(activeNotebook.id, {
@@ -189,7 +259,7 @@ export function SidebarPanel({
             });
           }}
         >
-          <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.2em] text-muted/70">
+          <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--text-muted)]">
             <FolderOpen size={18} strokeWidth={1.8} />
             <span>Edit notebook</span>
           </div>
@@ -197,27 +267,27 @@ export function SidebarPanel({
             value={editingName}
             onChange={(event) => setEditingName(event.target.value)}
             placeholder="Notebook name"
-            className="mt-3 w-full rounded-2xl bg-white/70 px-4 py-3 text-[14px] text-foreground outline-none ring-1 ring-border/45 transition placeholder:text-muted/70 focus:ring-2 focus:ring-accent/15"
+            className="app-field mt-4 w-full rounded-[20px] border-none px-4 py-3 text-[14px] outline-none"
           />
           <textarea
             value={editingDescription}
             onChange={(event) => setEditingDescription(event.target.value)}
             placeholder="Notebook description"
             rows={3}
-            className="mt-3 w-full resize-none rounded-2xl bg-white/70 px-4 py-3 text-[14px] leading-6 text-foreground outline-none ring-1 ring-border/45 transition placeholder:text-muted/70 focus:ring-2 focus:ring-accent/15"
+            className="app-field mt-3 w-full resize-none rounded-[20px] border-none px-4 py-3 text-[14px] leading-6 outline-none"
           />
           <div className="mt-3 flex items-center gap-3">
             <input
               type="color"
               value={editingColor}
               onChange={(event) => setEditingColor(event.target.value)}
-              className="h-10 w-10 cursor-pointer rounded-xl border border-border/70 bg-transparent p-1"
+              className="h-10 w-10 cursor-pointer rounded-2xl border-none bg-transparent p-1"
               aria-label="Notebook color"
             />
             <button
               type="submit"
               disabled={isUpdatingNotebook || !editingName.trim()}
-              className="rounded-full bg-white px-4 py-2 text-sm font-medium text-foreground transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-60"
+              className="app-button app-button-accent disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isUpdatingNotebook ? "Saving..." : "Save"}
             </button>
@@ -225,7 +295,7 @@ export function SidebarPanel({
               type="button"
               onClick={() => void onDeleteNotebook(activeNotebook.id)}
               disabled={isDeletingNotebook}
-              className="rounded-full px-4 py-2 text-sm font-medium text-muted transition hover:text-[#b33f22] disabled:cursor-not-allowed disabled:opacity-60"
+              className="app-button text-[var(--text-muted)] hover:text-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isDeletingNotebook ? "Deleting..." : "Delete"}
             </button>

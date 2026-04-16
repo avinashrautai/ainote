@@ -2,17 +2,22 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "AI Notes App",
-    short_name: "AI Notes",
+    name: "AINote",
+    short_name: "AINote",
     description:
-      "A premium AI-assisted notes workspace with offline-ready shell support and installable app behavior.",
+      "A premium notes workspace with offline-ready shell support and installable app behavior.",
     start_url: "/",
     scope: "/",
     display: "standalone",
-    background_color: "#f4ede3",
-    theme_color: "#f4ede3",
+    background_color: "#fafafa",
+    theme_color: "#fafafa",
     orientation: "portrait",
     icons: [
+      {
+        src: "/icons/app-icon.svg",
+        sizes: "any",
+        type: "image/svg+xml",
+      },
       {
         src: "/icons/icon-192.png",
         sizes: "192x192",

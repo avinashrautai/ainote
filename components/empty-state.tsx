@@ -16,16 +16,20 @@ export function EmptyState({
   disabled,
 }: EmptyStateProps) {
   return (
-    <div className="rounded-3xl border border-dashed border-border bg-white/70 p-6 text-center">
-      <p className="text-xs font-semibold uppercase tracking-[0.24em] text-muted">{eyebrow}</p>
-      <h3 className="mt-3 text-xl font-semibold">{title}</h3>
-      <p className="mt-3 text-sm leading-6 text-muted">{description}</p>
+    <div className="app-surface rounded-[28px] px-7 py-8 text-center">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--text-muted)]">
+        {eyebrow}
+      </p>
+      <h3 className="font-display mt-4 text-[1.9rem] text-[var(--text)]">{title}</h3>
+      <p className="mx-auto mt-3 max-w-[28rem] text-sm leading-7 text-[var(--text-muted)]">
+        {description}
+      </p>
       {actionLabel && onAction ? (
         <button
           type="button"
           onClick={onAction}
           disabled={disabled}
-          className="mt-5 rounded-full bg-accent px-4 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+          className="app-button app-button-accent mt-6 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {actionLabel}
         </button>

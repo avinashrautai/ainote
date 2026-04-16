@@ -2,27 +2,111 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  color-scheme: light;
-}
-
 * {
   box-sizing: border-box;
 }
 
 html {
+  --bg: #f8f8f7;
+  --panel: #ffffff;
+  --panel-2: #f3f3f1;
+  --text: #111111;
+  --muted: #4f4f4c;
+  --border: #e7e5e4;
+  --accent: #e53935;
+  --accent-hover: #c62828;
+  --hover: #f3f4f6;
+  --surface: var(--panel);
+  --surface-2: var(--panel-2);
+  --text-muted: var(--muted);
+  --accent-soft: rgba(229, 57, 53, 0.08);
+  color-scheme: light;
   min-height: 100%;
-  background:
-    radial-gradient(circle at top left, rgba(184, 92, 56, 0.18), transparent 28%),
-    linear-gradient(135deg, #f8f2e8 0%, #efe4d3 55%, #f7f1e8 100%);
+  background: var(--bg);
+  scroll-behavior: smooth;
+}
+
+html[data-theme="light"] {
+  color-scheme: light;
+}
+
+html[data-accent="blue"] {
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-soft: rgba(37, 99, 235, 0.1);
+}
+
+html[data-accent="green"] {
+  --accent: #16a34a;
+  --accent-hover: #15803d;
+  --accent-soft: rgba(22, 163, 74, 0.1);
+}
+
+html[data-accent="amber"] {
+  --accent: #d97706;
+  --accent-hover: #b45309;
+  --accent-soft: rgba(217, 119, 6, 0.1);
+}
+
+html[data-theme="dark"] {
+  --bg: #0f1115;
+  --panel: #171a21;
+  --panel-2: #1f242d;
+  --text: #e5e7eb;
+  --muted: #9ca3af;
+  --border: #2a2f3a;
+  --accent: #ff4d4f;
+  --accent-hover: #e53935;
+  --hover: #1f242d;
+  --surface: var(--panel);
+  --surface-2: var(--panel-2);
+  --text-muted: var(--muted);
+  --accent-soft: rgba(255, 77, 79, 0.12);
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --panel-2: #1f242d;
+    --text: #e5e7eb;
+    --muted: #9ca3af;
+    --border: #2a2f3a;
+    --accent: #ff4d4f;
+    --accent-hover: #e53935;
+    --hover: #1f242d;
+    --surface: var(--panel);
+    --surface-2: var(--panel-2);
+    --text-muted: var(--muted);
+    --accent-soft: rgba(255, 77, 79, 0.12);
+    color-scheme: dark;
+  }
 }
 
 body {
   min-height: 100vh;
   margin: 0;
-  color: #241c16;
-  font-family: ui-sans-serif, system-ui, sans-serif;
-  background: transparent;
+  color: var(--text);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background:
+    radial-gradient(circle at top center, color-mix(in srgb, var(--panel-2) 64%, transparent), transparent 28%),
+    linear-gradient(180deg, color-mix(in srgb, var(--panel) 95%, transparent), transparent 18%),
+    var(--bg);
+  transition:
+    background-color 160ms ease,
+    color 160ms ease;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--panel) 76%, transparent), transparent 28%),
+    radial-gradient(circle at right top, color-mix(in srgb, var(--accent) 4%, transparent), transparent 24%);
+  opacity: 0.7;
 }
 
 a {
@@ -36,6 +120,153 @@ textarea {
   font: inherit;
 }
 
+button,
+input,
+textarea,
+select {
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: color-mix(in srgb, var(--text-muted) 85%, transparent);
+}
+
 ::selection {
-  background: rgba(184, 92, 56, 0.22);
+  background: color-mix(in srgb, var(--accent) 24%, transparent);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--text-muted) 24%, transparent);
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 65%, transparent);
+  outline-offset: 2px;
+}
+
+@layer base {
+  h1,
+  h2,
+  h3,
+  .font-display {
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    letter-spacing: -0.04em;
+  }
+}
+
+@layer components {
+  .app-shell-frame {
+    background: color-mix(in srgb, var(--panel) 92%, transparent);
+    box-shadow:
+      0 12px 32px color-mix(in srgb, var(--text) 6%, transparent),
+      inset 0 1px 0 color-mix(in srgb, white 18%, transparent);
+    backdrop-filter: blur(18px);
+  }
+
+  .app-surface {
+    background: color-mix(in srgb, var(--panel) 94%, transparent);
+    box-shadow:
+      0 10px 24px color-mix(in srgb, var(--text) 4%, transparent),
+      inset 0 1px 0 color-mix(in srgb, white 14%, transparent);
+  }
+
+  .app-sidebar {
+    background: color-mix(in srgb, var(--panel) 48%, transparent);
+    box-shadow:
+      0 4px 10px color-mix(in srgb, var(--text) 1.5%, transparent),
+      inset 0 1px 0 color-mix(in srgb, white 10%, transparent);
+  }
+
+  .app-surface-soft {
+    background: color-mix(in srgb, var(--panel-2) 94%, transparent);
+  }
+
+  .app-button {
+    @apply inline-flex items-center gap-2 rounded-[14px] px-3.5 py-2 text-[13px] font-medium transition;
+    background: transparent;
+    color: var(--text);
+  }
+
+  .app-button:hover {
+    background: color-mix(in srgb, var(--hover) 96%, transparent);
+  }
+
+  .app-button-accent {
+    background: var(--accent);
+    color: white;
+  }
+
+  .app-button-accent:hover {
+    background: var(--accent-hover);
+  }
+
+  .app-button-soft {
+    background: color-mix(in srgb, var(--panel-2) 96%, transparent);
+    color: var(--text);
+  }
+
+  .app-button-soft:hover {
+    background: color-mix(in srgb, var(--hover) 96%, transparent);
+  }
+
+  .app-icon-button {
+    @apply inline-flex h-10 w-10 items-center justify-center rounded-full transition;
+    background: transparent;
+    color: color-mix(in srgb, var(--text-muted) 92%, transparent);
+  }
+
+  .app-icon-button:hover {
+    background: color-mix(in srgb, var(--hover) 96%, transparent);
+    color: var(--text);
+  }
+
+  .app-field {
+    background: color-mix(in srgb, var(--panel) 88%, transparent);
+    color: var(--text);
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--border) 78%, transparent);
+  }
+
+  .app-field:focus-within {
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--border) 92%, transparent);
+  }
+
+  .app-menu {
+    background: color-mix(in srgb, var(--panel) 98%, transparent);
+    box-shadow:
+      0 22px 48px color-mix(in srgb, var(--text) 14%, transparent),
+      inset 0 1px 0 color-mix(in srgb, white 10%, transparent);
+  }
+
+  .app-menu-item {
+    @apply flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-sm transition;
+    color: var(--text);
+  }
+
+  .app-menu-item:hover {
+    background: color-mix(in srgb, var(--hover) 96%, transparent);
+  }
+
+  .app-menu-item[aria-pressed="true"] {
+    background: color-mix(in srgb, var(--accent-soft) 100%, transparent);
+    color: var(--accent);
+  }
 }

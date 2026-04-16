@@ -1,8 +1,8 @@
 "use client";
 
-import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Ellipsis, Plus } from "lucide-react";
+import type { ChangeEvent } from "react";
+import { FileUp, Menu, Plus, Search, Settings2 } from "lucide-react";
 import { NoteEditorPanel } from "@/components/note-editor-panel";
 import { NotesListPanel } from "@/components/notes-list-panel";
 import { SidebarPanel } from "@/components/sidebar-panel";
@@ -17,6 +17,35 @@ import type {
 
 const SEARCH_DEBOUNCE_MS = 250;
 const AUTOSAVE_DEBOUNCE_MS = 700;
+const THEME_STORAGE_KEY = "ainote-theme";
+const ACCENT_STORAGE_KEY = "ainote-accent";
+const APP_VERSION = "0.1.0";
+
+type ThemePreference = "system" | "light" | "dark";
+type EffectiveTheme = "light" | "dark";
+type AccentOption = "red" | "blue" | "green" | "amber";
+
+const ACCENT_SWATCHES: Record<AccentOption, string> = {
+  red: "#e53935",
+  blue: "#2563eb",
+  green: "#16a34a",
+  amber: "#d97706",
+};
+
+function formatHeaderDateTime(date: Date) {
+  return {
+    day: new Intl.DateTimeFormat("en-US", { weekday: "long" }).format(date),
+    date: new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }).format(date),
+    time: new Intl.DateTimeFormat("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(date),
+  };
+}
 
 function getErrorMessage(error: unknown) {
   if (error instanceof Error) {
@@ -71,35 +100,6 @@ async function safeParseJson<T>(response: Response): Promise<T | null> {
   }
 }
 
-function PanelToggle({
-  label,
-  title,
-  active,
-  onClick,
-  children,
-}: {
-  label: string;
-  title: string;
-  active: boolean;
-  onClick: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      title={title}
-      aria-label={label}
-      onClick={onClick}
-      className={[
-        "flex h-9 w-9 items-center justify-center rounded-2xl transition",
-        active ? "bg-accent text-white" : "bg-white/70 text-muted/80 hover:bg-white/90 hover:text-foreground",
-      ].join(" ")}
-    >
-      {children}
-    </button>
-  );
-}
-
 export function AppShell() {
   const [notebooks, setNotebooks] = useState<NotebookSummary[]>([]);
   const [notes, setNotes] = useState<NoteListItem[]>([]);
@@ -121,9 +121,15 @@ export function AppShell() {
   const [isCreatingNotebook, setIsCreatingNotebook] = useState(false);
   const [isUpdatingNotebook, setIsUpdatingNotebook] = useState(false);
   const [isDeletingNotebook, setIsDeletingNotebook] = useState(false);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isNotesPanelOpen, setIsNotesPanelOpen] = useState(false);
-  const [isFocusMode, setIsFocusMode] = useState(false);
+  const [themePreference, setThemePreference] = useState<ThemePreference>("system");
+  const [effectiveTheme, setEffectiveTheme] = useState<EffectiveTheme>("light");
+  const [accentOption, setAccentOption] = useState<AccentOption>("red");
+  const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(false);
+  const [isAboutOpen, setIsAboutOpen] = useState(false);
+  const [settingsMessage, setSettingsMessage] = useState<string | null>(null);
+  const [now, setNow] = useState(() => new Date());
   const hasInitializedFiltersRef = useRef(false);
   const selectedNoteIdRef = useRef<string | null>(null);
   const lastSavedSnapshotRef = useRef<string | null>(null);
@@ -132,6 +138,8 @@ export function AppShell() {
   const draftRef = useRef<NoteDetail | null>(null);
   const activeNotebookIdRef = useRef(activeNotebookId);
   const searchQueryRef = useRef(searchQuery);
+  const importInputRef = useRef<HTMLInputElement | null>(null);
+  const settingsMenuRef = useRef<HTMLDivElement | null>(null);
 
   const activeNotebook = useMemo(
     () => notebooks.find((notebook) => notebook.id === activeNotebookId) ?? null,
@@ -142,6 +150,79 @@ export function AppShell() {
     () => notebooks.reduce((total, notebook) => total + notebook.noteCount, 0),
     [notebooks],
   );
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 767px)");
+    setIsSidebarCollapsed(mediaQuery.matches);
+  }, []);
+
+  useEffect(() => {
+    const storedPreference = localStorage.getItem(THEME_STORAGE_KEY);
+    const storedAccent = localStorage.getItem(ACCENT_STORAGE_KEY);
+    const nextPreference =
+      storedPreference === "light" || storedPreference === "dark" || storedPreference === "system"
+        ? storedPreference
+        : "system";
+    const nextAccent =
+      storedAccent === "red" || storedAccent === "blue" || storedAccent === "green" || storedAccent === "amber"
+        ? storedAccent
+        : "red";
+
+    setThemePreference(nextPreference);
+    setAccentOption(nextAccent);
+  }, []);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+
+    const applyTheme = () => {
+      const nextTheme = themePreference === "system" ? (mediaQuery.matches ? "dark" : "light") : themePreference;
+      setEffectiveTheme(nextTheme);
+
+      if (themePreference === "system") {
+        document.documentElement.removeAttribute("data-theme");
+      } else {
+        document.documentElement.setAttribute("data-theme", themePreference);
+      }
+
+      localStorage.setItem(THEME_STORAGE_KEY, themePreference);
+    };
+
+    applyTheme();
+
+    const handleChange = () => {
+      if (themePreference === "system") {
+        applyTheme();
+      }
+    };
+
+    mediaQuery.addEventListener("change", handleChange);
+    return () => mediaQuery.removeEventListener("change", handleChange);
+  }, [themePreference]);
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-accent", accentOption);
+    localStorage.setItem(ACCENT_STORAGE_KEY, accentOption);
+  }, [accentOption]);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      setNow(new Date());
+    }, 60000);
+
+    return () => window.clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    function handlePointerDown(event: MouseEvent) {
+      if (!settingsMenuRef.current?.contains(event.target as Node)) {
+        setIsSettingsMenuOpen(false);
+      }
+    }
+
+    window.addEventListener("mousedown", handlePointerDown);
+    return () => window.removeEventListener("mousedown", handlePointerDown);
+  }, []);
 
   useEffect(() => {
     selectedNoteIdRef.current = selectedNoteId;
@@ -160,6 +241,12 @@ export function AppShell() {
   }, [searchQuery]);
 
   useEffect(() => {
+    if (searchQuery.trim()) {
+      setIsNotesPanelOpen(true);
+    }
+  }, [searchQuery]);
+
+  useEffect(() => {
     if (!importMessage) {
       return;
     }
@@ -170,6 +257,22 @@ export function AppShell() {
 
     return () => window.clearTimeout(timeout);
   }, [importMessage]);
+
+  useEffect(() => {
+    if (!settingsMessage) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setSettingsMessage(null);
+    }, 2200);
+
+    return () => window.clearTimeout(timeout);
+  }, [settingsMessage]);
+
+  const showSidebar = true;
+  const showNotesPanel = isNotesPanelOpen;
+  const dateTimeLabel = useMemo(() => formatHeaderDateTime(now), [now]);
 
   const loadBootstrap = useCallback(
     async (nextNotebookId: string, nextQuery: string, preserveSelection = true) => {
@@ -458,8 +561,7 @@ export function AppShell() {
     setSaveState("idle");
 
     try {
-      const notebookId =
-        activeNotebookId !== "all" ? activeNotebookId : notebooks[0]?.id;
+      const notebookId = activeNotebookId !== "all" ? activeNotebookId : notebooks[0]?.id;
 
       const response = await fetch("/api/notes", {
         method: "POST",
@@ -473,8 +575,7 @@ export function AppShell() {
       const created = await parseResponse<NoteDetail>(response);
 
       setSearchQuery("");
-      setIsNotesPanelOpen(true);
-      setIsFocusMode(false);
+      setIsNotesPanelOpen(false);
       await loadBootstrap(activeNotebookId, "", false);
       setSelectedNoteId(created.id);
     } catch (error) {
@@ -516,7 +617,6 @@ export function AppShell() {
 
         setSearchQuery("");
         setIsNotesPanelOpen(true);
-        setIsFocusMode(false);
         await loadBootstrap(activeNotebookId, "", false);
         setSelectedNoteId(created.id);
         setSaveState("saved");
@@ -565,94 +665,319 @@ export function AppShell() {
     }
   }, [activeNotebookId, loadBootstrap, notes, searchQuery, selectedNoteId]);
 
-  const handleToggleFocusMode = useCallback(() => {
-    setIsFocusMode((current) => {
-      const next = !current;
+  function downloadFile(filename: string, content: string, type: string) {
+    const blob = new Blob([content], { type });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
 
-      if (next) {
-        setIsNotesPanelOpen(false);
-      }
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
 
-      return next;
-    });
-  }, []);
+  function handleExport(kind: "txt" | "md") {
+    const note = draftRef.current;
 
-  const showSidebar = !isFocusMode;
-  const showNotesPanel = !isFocusMode && isNotesPanelOpen;
+    if (!note) {
+      return;
+    }
+
+    const safeTitle = (note.title.trim() || "untitled-note")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+
+    if (kind === "md") {
+      downloadFile(
+        `${safeTitle || "untitled-note"}.md`,
+        `# ${note.title || "Untitled note"}\n\n${note.content}`,
+        "text/markdown;charset=utf-8",
+      );
+      return;
+    }
+
+    downloadFile(
+      `${safeTitle || "untitled-note"}.txt`,
+      `${note.title || "Untitled note"}\n\n${note.content}`,
+      "text/plain;charset=utf-8",
+    );
+  }
+
+  function handleImportChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    void handleImportNote(file);
+    event.target.value = "";
+  }
+
+  function handleCheckForUpdates() {
+    setSettingsMessage("App is up to date");
+  }
 
   return (
-    <main className="min-h-screen p-4 md:p-6">
-      <div className="mx-auto flex min-h-[calc(100vh-2rem)] max-w-[1500px] flex-col md:min-h-[calc(100vh-3rem)]">
-        <header className="grid grid-cols-[1fr_auto_1fr] items-center px-4 py-6 md:px-6">
-          <div />
+    <main className="min-h-screen p-3 md:p-5">
+      <input
+        ref={importInputRef}
+        type="file"
+        accept=".txt,.md,text/plain,text/markdown"
+        onChange={handleImportChange}
+        className="hidden"
+      />
 
-          <div className="justify-self-center text-[20px] font-medium tracking-[0.09em] text-foreground/65">
-            AI NOTE
-          </div>
+      <div className="app-shell-frame mx-auto flex min-h-[calc(100vh-1.5rem)] max-w-[1520px] flex-col rounded-[34px] px-3 py-3 md:min-h-[calc(100vh-2.5rem)] md:px-4 md:py-4">
+        <header className="flex flex-col gap-2 px-2 py-2 md:px-3">
+          <div className="flex flex-col gap-2 lg:grid lg:grid-cols-[auto_minmax(240px,340px)_auto] lg:items-start lg:gap-3">
+            <div className="min-w-0">
+              <div className="flex items-start gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsSidebarCollapsed((current) => !current)}
+                  className="app-icon-button md:hidden"
+                  aria-label="Toggle sidebar"
+                  title="Toggle sidebar"
+                >
+                  <Menu size={18} strokeWidth={1.9} />
+                </button>
+                <div>
+                  <p className="font-display text-[30px] font-bold leading-none tracking-[-0.06em] text-[#111111]">
+                    AINote
+                  </p>
+                  <div className="mt-2">
+                    <button
+                      type="button"
+                      onClick={() => void handleCreateNote()}
+                      disabled={isCreatingNote || notebooks.length === 0}
+                      className="app-button app-button-accent w-fit disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <Plus size={15} strokeWidth={2} />
+                      {isCreatingNote ? "Creating..." : "New"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
 
-          <div className="flex items-center justify-self-end gap-2">
-            <PanelToggle
-              label="Toggle browser"
-              title="Toggle browser"
-              active={showNotesPanel}
-              onClick={() => {
-                setIsFocusMode(false);
-                setIsNotesPanelOpen((current) => !current);
-              }}
-            >
-              <Ellipsis size={18} strokeWidth={1.9} />
-            </PanelToggle>
+            <div className="app-field mt-1 flex min-w-0 w-full max-w-[460px] items-center gap-3 rounded-[16px] px-3.5 py-2 lg:mt-0 lg:justify-self-center">
+              <Search size={16} strokeWidth={1.9} className="shrink-0 text-[var(--text-muted)]" />
+              <input
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                className="w-full border-none bg-transparent text-[13px] text-[#111111] outline-none focus-visible:outline-none"
+                placeholder="Search notes and writing"
+                aria-label="Search notes"
+              />
+              {searchQuery ? (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="text-[12px] font-medium text-[var(--text-muted)] transition hover:text-[#111111]"
+                >
+                  Clear
+                </button>
+              ) : null}
+            </div>
 
-            <button
-              type="button"
-              onClick={() => void handleCreateNote()}
-              disabled={isCreatingNote || notebooks.length === 0}
-              className="inline-flex items-center gap-2 rounded-full bg-accent px-4 py-2 text-[14px] font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <Plus size={16} strokeWidth={2.2} />
-              {isCreatingNote ? "Creating..." : "New note"}
-            </button>
+            <div className="relative mt-1 shrink-0 lg:mt-0 lg:justify-self-end" ref={settingsMenuRef}>
+              <div className="flex items-center gap-2">
+                <div className="hidden text-right md:block">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">
+                    {dateTimeLabel.day}
+                  </p>
+                  <p className="mt-1 text-[13px] font-medium text-[#111111]">
+                    {dateTimeLabel.date} · {dateTimeLabel.time}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsSettingsMenuOpen((current) => !current)}
+                  className="app-icon-button h-9 w-9"
+                  aria-label="Open settings"
+                  title="Settings"
+                >
+                  <Settings2 size={16} strokeWidth={1.9} />
+                </button>
+              </div>
+              {isSettingsMenuOpen ? (
+                <div className="app-menu absolute right-0 top-12 z-20 w-[320px] rounded-[24px] p-3">
+                  <div className="px-3 pb-2">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--text-muted)]">
+                      Theme
+                    </p>
+                  </div>
+                  <div className="px-3">
+                    <div className="flex rounded-[14px] bg-[color:color-mix(in_srgb,var(--surface-2)_72%,transparent)] p-1">
+                      {(["light", "dark", "system"] as ThemePreference[]).map((option) => (
+                        <button
+                          key={option}
+                          type="button"
+                          aria-pressed={themePreference === option}
+                          onClick={() => setThemePreference(option)}
+                          className={[
+                            "flex-1 rounded-[10px] px-3 py-2 text-[12px] font-medium capitalize transition",
+                            themePreference === option
+                              ? "bg-[var(--panel)] text-[#111111] shadow-[0_1px_4px_rgba(17,17,17,0.08)]"
+                              : "text-[var(--text-muted)] hover:text-[#111111]",
+                          ].join(" ")}
+                        >
+                          {option}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="px-3 pb-2 pt-4">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--text-muted)]">
+                      Accent
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 px-3">
+                    {(["red", "blue", "green", "amber"] as AccentOption[]).map((option) => (
+                      <button
+                        key={option}
+                        type="button"
+                        aria-pressed={accentOption === option}
+                        onClick={() => setAccentOption(option)}
+                        className={[
+                          "flex items-center gap-3 rounded-[14px] px-3 py-2.5 text-left transition",
+                          accentOption === option
+                            ? "bg-[color:color-mix(in_srgb,var(--accent-soft)_100%,transparent)] text-[#111111]"
+                            : "hover:bg-[color:color-mix(in_srgb,var(--hover)_96%,transparent)] text-[var(--text-muted)]",
+                        ].join(" ")}
+                      >
+                        <span
+                          className="h-2.5 w-2.5 rounded-full"
+                          style={{ backgroundColor: ACCENT_SWATCHES[option] }}
+                        />
+                        <span className="text-[13px] font-medium capitalize">{option}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="px-3 pb-1 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsSettingsMenuOpen(false);
+                        setIsAboutOpen(true);
+                      }}
+                      className="app-menu-item"
+                    >
+                      <span>About</span>
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
           </div>
         </header>
 
+        {isAboutOpen ? (
+          <div className="fixed inset-0 z-40 flex items-center justify-center bg-[color:color-mix(in_srgb,#111111_18%,transparent)] px-4">
+            <button
+              type="button"
+              aria-label="Close about dialog"
+              className="absolute inset-0"
+              onClick={() => setIsAboutOpen(false)}
+            />
+            <div className="app-menu relative z-10 w-full max-w-[420px] rounded-[28px] p-6">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="font-display text-[28px] font-bold tracking-[-0.05em] text-[#111111]">
+                    AINote
+                  </p>
+                  <p className="mt-3 text-[15px] leading-7 text-[#111111]">
+                    A calm writing space for clean notes, focused thinking, and everyday productivity.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsAboutOpen(false)}
+                  className="app-icon-button h-9 w-9"
+                  aria-label="Close about dialog"
+                >
+                  <span className="text-base leading-none">×</span>
+                </button>
+              </div>
+
+              <div className="mt-6 space-y-3 text-[14px] text-[#111111]">
+                <p>
+                  <span className="text-[var(--text-muted)]">Version:</span> {APP_VERSION}
+                </p>
+                <p>
+                  <span className="text-[var(--text-muted)]">Made by:</span> Avinash with ❤️ &amp; AI
+                </p>
+                <a
+                  href="https://github.com/avinashrautai/ainote"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex text-[var(--accent)] transition hover:text-[var(--accent-hover)]"
+                >
+                  GitHub repository
+                </a>
+              </div>
+
+              <div className="mt-6 border-t border-[color:color-mix(in_srgb,var(--border)_72%,transparent)] pt-5">
+                <button
+                  type="button"
+                  onClick={handleCheckForUpdates}
+                  className="app-button rounded-[12px] px-3 py-1.5 text-[12px]"
+                >
+                  Check for updates
+                </button>
+                {settingsMessage ? (
+                  <p className="mt-3 text-sm text-[var(--text-muted)]">{settingsMessage}</p>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        ) : null}
+
         {appError ? (
-          <div className="mx-4 mb-3 rounded-2xl bg-[#fff0e8] px-4 py-3 text-sm text-[#8a3c22] md:mx-6">
+          <div className="mx-2 mb-3 rounded-[22px] bg-[color:color-mix(in_srgb,var(--accent-soft)_90%,transparent)] px-4 py-3 text-sm text-[var(--accent)] md:mx-3">
             {appError}
           </div>
         ) : null}
 
-        <section className="flex flex-1 gap-3 overflow-hidden">
-          {showSidebar ? (
-            <SidebarPanel
-              notebooks={notebooks}
-              activeNotebookId={activeNotebookId}
-              onSelectNotebook={(notebookId) => {
-                setIsFocusMode(false);
-                setActiveNotebookId(notebookId);
-              }}
-              onCreateNotebook={handleCreateNotebook}
-              onUpdateNotebook={handleUpdateNotebook}
-              onDeleteNotebook={handleDeleteNotebook}
-              isCreatingNotebook={isCreatingNotebook}
-              isUpdatingNotebook={isUpdatingNotebook}
-              isDeletingNotebook={isDeletingNotebook}
-              totalNoteCount={workspaceNoteCount}
-              activeNotebook={activeNotebook}
-              isCollapsed={isSidebarCollapsed}
-              onToggleCollapsed={() => setIsSidebarCollapsed((current) => !current)}
-            />
-          ) : null}
+        {showSidebar && !isSidebarCollapsed ? (
+          <button
+            type="button"
+            aria-label="Close sidebar"
+            onClick={() => setIsSidebarCollapsed(true)}
+            className="fixed inset-0 z-20 bg-[color:color-mix(in_srgb,var(--text)_10%,transparent)] md:hidden"
+          />
+        ) : null}
+
+        <section className="flex flex-1 gap-2 overflow-hidden">
+          <SidebarPanel
+            notebooks={notebooks}
+            activeNotebookId={activeNotebookId}
+            onSelectNotebook={(notebookId) => {
+              setActiveNotebookId(notebookId);
+              setIsNotesPanelOpen(true);
+            }}
+            onCreateNotebook={handleCreateNotebook}
+            onUpdateNotebook={handleUpdateNotebook}
+            onDeleteNotebook={handleDeleteNotebook}
+            isCreatingNotebook={isCreatingNotebook}
+            isUpdatingNotebook={isUpdatingNotebook}
+            isDeletingNotebook={isDeletingNotebook}
+            totalNoteCount={workspaceNoteCount}
+            activeNotebook={activeNotebook}
+            isCollapsed={isSidebarCollapsed}
+            onToggleCollapsed={() => setIsSidebarCollapsed((current) => !current)}
+          />
 
           {showNotesPanel ? (
             <NotesListPanel
               notes={notes}
               selectedNoteId={selectedNoteId}
               searchQuery={searchQuery}
-              onSearchChange={setSearchQuery}
-              onSelectNote={(noteId) => {
-                setSelectedNoteId(noteId);
-                setIsFocusMode(false);
-              }}
+              onSelectNote={(noteId) => setSelectedNoteId(noteId)}
               onCreateNote={() => void handleCreateNote()}
               isLoading={appLoading || notesLoading}
               activeNotebook={activeNotebook}
@@ -669,15 +994,15 @@ export function AppShell() {
             saveError={saveError}
             importMessage={importMessage}
             notebooks={notebooks}
+            onSaveNote={() => void handleSaveNow()}
+            onDeleteNote={() => void handleDeleteNote()}
+            onImportTrigger={() => importInputRef.current?.click()}
+            onExportNote={handleExport}
             onChange={setDraft}
             onCreateNote={() => void handleCreateNote()}
-            onImportNote={(file) => void handleImportNote(file)}
+            focusRequest={0}
             isImportingNote={isImportingNote}
-            onSaveNote={() => void handleSaveNow()}
-            onDelete={() => void handleDeleteNote()}
-            isDeleting={isDeletingNote}
-            isFocusMode={isFocusMode}
-            onToggleFocusMode={handleToggleFocusMode}
+            isDeletingNote={isDeletingNote}
           />
         </section>
       </div>
