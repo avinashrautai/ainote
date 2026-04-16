@@ -7,6 +7,16 @@ import { NoteEditorPanel } from "@/components/note-editor-panel";
 import { NotesListPanel } from "@/components/notes-list-panel";
 import { SidebarPanel } from "@/components/sidebar-panel";
 import { parseImportedNoteFile } from "@/lib/imported-note";
+import {
+  createNote as createLocalNote,
+  createNotebook as createLocalNotebook,
+  deleteNote as deleteLocalNote,
+  deleteNotebook as deleteLocalNotebook,
+  getNoteDetail,
+  loadBootstrapData,
+  updateNote as updateLocalNote,
+  updateNotebook as updateLocalNotebook,
+} from "@/lib/local-store";
 import type {
   BootstrapResponse,
   NoteDetail,
@@ -53,51 +63,6 @@ function getErrorMessage(error: unknown) {
   }
 
   return "Something went wrong.";
-}
-
-async function parseResponse<T>(response: Response): Promise<T> {
-  if (!response.ok) {
-    const errorPayload = (await safeParseJson<{ error?: string }>(response)) ?? {};
-    throw new Error(errorPayload.error ?? "Request failed.");
-  }
-
-  const data = await safeParseJson<T>(response);
-
-  if (data === null) {
-    throw new Error("The server returned an empty response.");
-  }
-
-  return data;
-}
-
-async function safeParseJson<T>(response: Response): Promise<T | null> {
-  const contentType = response.headers.get("content-type") ?? "";
-  const contentLength = response.headers.get("content-length");
-
-  if (response.status === 204 || contentLength === "0") {
-    return null;
-  }
-
-  if (!contentType.toLowerCase().includes("application/json")) {
-    return null;
-  }
-
-  const text = await response.text();
-
-  if (!text.trim()) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(text) as T;
-  } catch (error) {
-    console.error("[frontend:parse-error]", {
-      status: response.status,
-      body: text,
-      error,
-    });
-    throw new Error("The server returned invalid JSON.");
-  }
 }
 
 export function AppShell() {
@@ -276,24 +241,11 @@ export function AppShell() {
 
   const loadBootstrap = useCallback(
     async (nextNotebookId: string, nextQuery: string, preserveSelection = true) => {
-      const params = new URLSearchParams();
-
-      if (nextNotebookId !== "all") {
-        params.set("notebookId", nextNotebookId);
-      }
-
-      if (nextQuery.trim()) {
-        params.set("q", nextQuery.trim());
-      }
-
       setNotesLoading(true);
       setAppError(null);
 
       try {
-        const response = await fetch(`/api/bootstrap?${params.toString()}`, {
-          cache: "no-store",
-        });
-        const data = await parseResponse<BootstrapResponse>(response);
+        const data = await loadBootstrapData(nextNotebookId, nextQuery);
 
         setNotebooks(data.notebooks);
         setNotes(data.notes);
@@ -337,10 +289,7 @@ export function AppShell() {
     setSaveError(null);
 
     try {
-      const response = await fetch(`/api/notes/${noteId}`, {
-        cache: "no-store",
-      });
-      const data = await parseResponse<NoteDetail>(response);
+      const data = await getNoteDetail(noteId);
 
       setDraft(data);
       lastSavedSnapshotRef.current = JSON.stringify(data);
@@ -363,18 +312,11 @@ export function AppShell() {
         return;
       }
 
-      const response = await fetch(`/api/notes/${noteId}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          title: noteToSave.title,
-          content: noteToSave.content,
-          notebookId: noteToSave.notebookId,
-        }),
+      const data = await updateLocalNote(noteId, {
+        title: noteToSave.title,
+        content: noteToSave.content,
+        notebookId: noteToSave.notebookId,
       });
-      const data = await parseResponse<NoteDetail>(response);
 
       setDraft(data);
       lastSavedSnapshotRef.current = JSON.stringify(data);
@@ -472,14 +414,7 @@ export function AppShell() {
       setAppError(null);
 
       try {
-        const response = await fetch("/api/notebooks", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(input),
-        });
-        const created = await parseResponse<NotebookSummary>(response);
+        const created = await createLocalNotebook(input);
         const nextNotebooks = [...notebooks, created].sort((a, b) => a.name.localeCompare(b.name));
 
         setNotebooks(nextNotebooks);
@@ -500,14 +435,7 @@ export function AppShell() {
       setAppError(null);
 
       try {
-        const response = await fetch(`/api/notebooks/${notebookId}`, {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(input),
-        });
-        const updated = await parseResponse<NotebookSummary>(response);
+        const updated = await updateLocalNotebook(notebookId, input);
 
         setNotebooks((current) =>
           current.map((notebook) => (notebook.id === updated.id ? updated : notebook)),
@@ -531,11 +459,7 @@ export function AppShell() {
       setAppError(null);
 
       try {
-        const response = await fetch(`/api/notebooks/${notebookId}`, {
-          method: "DELETE",
-        });
-
-        await parseResponse<{ success: true }>(response);
+        await deleteLocalNotebook(notebookId);
         const nextActiveId = activeNotebookId === notebookId ? "all" : activeNotebookId;
 
         setActiveNotebookId(nextActiveId);
@@ -562,17 +486,9 @@ export function AppShell() {
 
     try {
       const notebookId = activeNotebookId !== "all" ? activeNotebookId : notebooks[0]?.id;
-
-      const response = await fetch("/api/notes", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          notebookId,
-        }),
+      const created = await createLocalNote({
+        notebookId,
       });
-      const created = await parseResponse<NoteDetail>(response);
 
       setSearchQuery("");
       setIsNotesPanelOpen(false);
@@ -602,18 +518,11 @@ export function AppShell() {
           throw new Error("Create a notebook before importing notes.");
         }
 
-        const response = await fetch("/api/notes", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            notebookId,
-            title: imported.title,
-            content: imported.content,
-          }),
+        const created = await createLocalNote({
+          notebookId,
+          title: imported.title,
+          content: imported.content,
         });
-        const created = await parseResponse<NoteDetail>(response);
 
         setSearchQuery("");
         setIsNotesPanelOpen(true);
@@ -643,11 +552,7 @@ export function AppShell() {
     setAppError(null);
 
     try {
-      const response = await fetch(`/api/notes/${selectedNoteId}`, {
-        method: "DELETE",
-      });
-
-      await parseResponse<{ success: true }>(response);
+      await deleteLocalNote(selectedNoteId);
       const nextSelectedId = notes.find((note) => note.id !== selectedNoteId)?.id ?? null;
 
       if (!nextSelectedId) {

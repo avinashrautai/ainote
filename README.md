@@ -1,16 +1,15 @@
 # AI Notes App
 
-A premium AI Notes App built with Next.js 15, TypeScript, Tailwind CSS, Prisma, and SQLite.
+A premium AI Notes App built with Next.js 15, TypeScript, Tailwind CSS, and a local-first note store designed to package cleanly with Tauri.
 
 ## Included
 
 - Next.js 15 App Router project structure
 - TypeScript configuration
 - Tailwind CSS setup
-- Prisma schema for notebooks and notes
-- SQLite datasource configuration
-- Prisma seed script with starter data
 - Notes workspace with CRUD, filtering, autosave, import/export, and installable PWA support
+- Local-first persistence for notebooks and notes
+- Tauri-ready static desktop bundle flow for Windows packaging
 
 ## Stack
 
@@ -18,9 +17,9 @@ A premium AI Notes App built with Next.js 15, TypeScript, Tailwind CSS, Prisma, 
 - React 19
 - TypeScript
 - Tailwind CSS
-- Prisma ORM
-- SQLite
+- Browser local storage persistence
 - Progressive Web App support
+- Tauri 2
 
 ## Getting Started
 
@@ -30,25 +29,7 @@ A premium AI Notes App built with Next.js 15, TypeScript, Tailwind CSS, Prisma, 
 npm install
 ```
 
-2. Generate the Prisma client:
-
-```bash
-npm run prisma:generate
-```
-
-3. Create the SQLite database schema:
-
-```bash
-npm run db:push
-```
-
-4. Seed the database:
-
-```bash
-npm run db:seed
-```
-
-5. Start the development server:
+2. Start the development server:
 
 ```bash
 npm run dev
@@ -68,20 +49,33 @@ npm run start
 - Visit the app in a Chromium-based browser and use the install prompt from the browser UI.
 - On mobile, open the production deployment in a supported browser and choose the install or add-to-home-screen option.
 - The app includes a web app manifest, install icons, and a production service worker for basic offline shell support.
-- Offline mode is intentionally lightweight: the app shell and previously visited pages can load without a network, but live database-backed changes still require connectivity.
+- Notes, notebooks, and preferences are stored locally in the browser or desktop webview.
 
-## Database Notes
+## Local Persistence
 
-- SQLite database path is configured through `DATABASE_URL` in `.env`
-- The default database file will be `prisma/dev.db`
-- Prisma schema lives in `prisma/schema.prisma`
+- Core note data is stored client-side so the app can run without a Next.js server.
+- On first launch, the app seeds a small starter workspace locally.
+- Theme and accent preferences are also persisted locally.
+
+## Tauri Packaging
+
+Build the desktop-ready frontend bundle:
+
+```bash
+npm run build:desktop
+```
+
+Build the Windows MSI with Tauri:
+
+```bash
+npx tauri build --bundles msi
+```
+
+The Tauri build uses a dedicated static export path so the packaged app does not depend on Next.js API routes or a running Next server.
 
 ## Suggested Local Setup Flow
 
 ```bash
 npm install
-npm run prisma:generate
-npm run db:push
-npm run db:seed
 npm run dev
 ```
